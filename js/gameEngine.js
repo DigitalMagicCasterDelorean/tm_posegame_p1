@@ -1,162 +1,267 @@
 /**
  * gameEngine.js
- * 게임 단계, 명령, 점수, 제한시간 등 게임 규칙 전체를 담당
- *
- * 포즈 인식을 활용한 게임 로직을 관리하는 엔진
- * (현재는 기본 템플릿이므로 향후 게임 로직 추가 가능)
+ * Rock Paper Scissors game logic
+ * 
+ * Manages game flow: GET READY → DRAW → Show choices → Determine winner
  */
 
 class GameEngine {
   constructor() {
-    this.score = 0;
-    this.level = 1;
-    this.timeLimit = 0;
-    this.currentCommand = null;
+    this.wins = 0;
+    this.draws = 0;
+    this.losses = 0;
     this.isGameActive = false;
-    this.gameTimer = null;
-    this.onCommandChange = null; // 명령 변경 콜백
-    this.onScoreChange = null; // 점수 변경 콜백
-    this.onGameEnd = null; // 게임 종료 콜백
+    this.currentPhase = null; // 'instruction', 'ready', 'draw', 'result'
+    this.playerChoice = null;
+    this.computerChoice = null;
+    this.capturedImage = null;
+
+    // Callbacks
+    this.onPhaseChange = null;
+    this.onScoreChange = null;
+    this.onResult = null;
+
+    // Game constants
+    this.CHOICES = ['가위', '바위', '보자기'];
+    this.CHOICE_EMOJIS = {
+      '가위': '✌️',
+      '바위': '✊',
+      '보자기': '✋'
+    };
   }
 
   /**
-   * 게임 시작
-   * @param {Object} config - 게임 설정 { timeLimit, commands }
+   * Start the game
    */
-  start(config = {}) {
+  start() {
     this.isGameActive = true;
-    this.score = 0;
-    this.level = 1;
-    this.timeLimit = config.timeLimit || 60; // 기본 60초
-    this.commands = config.commands || []; // 게임 명령어 배열
+    this.wins = 0;
+    this.draws = 0;
+    this.losses = 0;
 
-    if (this.timeLimit > 0) {
-      this.startTimer();
+    // Update score display
+    if (this.onScoreChange) {
+      this.onScoreChange(this.wins, this.draws, this.losses);
     }
 
-    // 첫 번째 명령 발급 (게임 모드일 경우)
-    if (this.commands.length > 0) {
-      this.issueNewCommand();
-    }
+    // Start first round
+    this.startRound();
   }
 
   /**
-   * 게임 중지
+   * Stop the game
    */
   stop() {
     this.isGameActive = false;
-    this.clearTimer();
-
-    if (this.onGameEnd) {
-      this.onGameEnd(this.score, this.level);
-    }
+    this.currentPhase = null;
   }
 
   /**
-   * 타이머 시작
+   * Start a new round
    */
-  startTimer() {
-    this.gameTimer = setInterval(() => {
-      this.timeLimit--;
-
-      if (this.timeLimit <= 0) {
-        this.stop();
-      }
-    }, 1000);
-  }
-
-  /**
-   * 타이머 정리
-   */
-  clearTimer() {
-    if (this.gameTimer) {
-      clearInterval(this.gameTimer);
-      this.gameTimer = null;
-    }
-  }
-
-  /**
-   * 새로운 명령 발급
-   */
-  issueNewCommand() {
-    if (this.commands.length === 0) return;
-
-    const randomIndex = Math.floor(Math.random() * this.commands.length);
-    this.currentCommand = this.commands[randomIndex];
-
-    if (this.onCommandChange) {
-      this.onCommandChange(this.currentCommand);
-    }
-  }
-
-  /**
-   * 포즈 인식 결과 처리
-   * @param {string} detectedPose - 인식된 포즈 이름
-   */
-  onPoseDetected(detectedPose) {
+  startRound() {
     if (!this.isGameActive) return;
 
-    // 현재 명령과 일치하는지 확인
-    if (this.currentCommand && detectedPose === this.currentCommand) {
-      this.addScore(10); // 점수 추가
-      this.issueNewCommand(); // 새로운 명령 발급
+    this.playerChoice = null;
+    this.computerChoice = null;
+    this.capturedImage = null;
+
+    // Phase 0: Show instruction
+    this.setPhase('instruction');
+    setTimeout(() => {
+      if (!this.isGameActive) return;
+      // Phase 1: Start countdown (3, 2, 1)
+      this.startCountdown();
+    }, 2000); // 2 seconds for instruction
+  }
+
+  /**
+   * Start countdown (3, 2, 1)
+   */
+  startCountdown() {
+    let count = 3;
+    this.setPhase('ready', count);
+
+    const countdownInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        this.setPhase('ready', count);
+      } else {
+        clearInterval(countdownInterval);
+        if (this.isGameActive) {
+          // Phase 2: DRAW
+          this.setPhase('draw');
+        }
+      }
+    }, 1000); // 1 second intervals
+  }
+
+  /**
+   * Set current game phase
+   */
+  setPhase(phase, countdown) {
+    this.currentPhase = phase;
+
+    if (this.onPhaseChange) {
+      let message = '';
+
+      if (phase === 'instruction') {
+        message = '가위, 바위, 보 중 하나를 골라<br>"DRAW!!" 에 내세요!';
+      } else if (phase === 'ready') {
+        message = countdown ? countdown.toString() : 'GET READY..';
+      } else if (phase === 'draw') {
+        message = 'DRAW!!';
+        // Start capture timer (1.5 seconds)
+        setTimeout(() => {
+          if (this.currentPhase === 'draw') {
+            this.capturePlayerChoice();
+          }
+        }, 1500);
+      } else if (phase === 'result') {
+        message = ''; // Result will be shown separately
+      }
+
+      this.onPhaseChange(phase, message);
     }
   }
 
   /**
-   * 점수 추가
-   * @param {number} points - 추가할 점수
+   * Capture player's choice during DRAW phase
    */
-  addScore(points) {
-    this.score += points;
+  capturePlayerChoice() {
+    // This will be called from main.js with the detected pose
+    // For now, just trigger the result phase
+    this.showResult();
+  }
 
-    // 레벨업 로직 (예: 100점마다)
-    if (this.score >= this.level * 100) {
-      this.level++;
+  /**
+   * Set player choice (called from main.js)
+   */
+  setPlayerChoice(choice, imageData) {
+    this.playerChoice = choice;
+    this.capturedImage = imageData;
+  }
+
+  /**
+   * Generate computer's random choice
+   */
+  generateComputerChoice() {
+    const randomIndex = Math.floor(Math.random() * this.CHOICES.length);
+    this.computerChoice = this.CHOICES[randomIndex];
+    return this.computerChoice;
+  }
+
+  /**
+   * Determine winner
+   * @returns {string} 'win', 'lose', or 'draw'
+   */
+  determineWinner() {
+    if (!this.playerChoice || !this.computerChoice) {
+      return 'draw'; // No choice detected
     }
 
+    if (this.playerChoice === this.computerChoice) {
+      return 'draw';
+    }
+
+    // Rock Paper Scissors logic
+    const winConditions = {
+      '바위': '가위',      // Rock beats Scissors
+      '가위': '보자기',    // Scissors beats Paper
+      '보자기': '바위'     // Paper beats Rock
+    };
+
+    if (winConditions[this.playerChoice] === this.computerChoice) {
+      return 'win';
+    } else {
+      return 'lose';
+    }
+  }
+
+  /**
+   * Show result and update score
+   */
+  showResult() {
+    if (!this.isGameActive) return;
+
+    // Generate computer choice
+    this.generateComputerChoice();
+
+    // Determine winner
+    const result = this.determineWinner();
+
+    // Update score
+    if (result === 'win') {
+      this.wins++;
+    } else if (result === 'lose') {
+      this.losses++;
+    } else {
+      this.draws++;
+    }
+
+    // Notify callbacks
     if (this.onScoreChange) {
-      this.onScoreChange(this.score, this.level);
+      this.onScoreChange(this.wins, this.draws, this.losses);
     }
+
+    if (this.onResult) {
+      this.onResult(result, this.playerChoice, this.computerChoice);
+    }
+
+    // Set result phase
+    this.setPhase('result');
+
+    // Start next round after showing result
+    setTimeout(() => {
+      if (this.isGameActive) {
+        this.startRound();
+      }
+    }, 3000); // 3 seconds to show result
   }
 
   /**
-   * 명령 변경 콜백 등록
-   * @param {Function} callback - (command) => void
+   * Get emoji for choice
    */
-  setCommandChangeCallback(callback) {
-    this.onCommandChange = callback;
+  getEmoji(choice) {
+    return this.CHOICE_EMOJIS[choice] || '❓';
   }
 
   /**
-   * 점수 변경 콜백 등록
-   * @param {Function} callback - (score, level) => void
+   * Register phase change callback
+   */
+  setPhaseChangeCallback(callback) {
+    this.onPhaseChange = callback;
+  }
+
+  /**
+   * Register score change callback
    */
   setScoreChangeCallback(callback) {
     this.onScoreChange = callback;
   }
 
   /**
-   * 게임 종료 콜백 등록
-   * @param {Function} callback - (finalScore, finalLevel) => void
+   * Register result callback
    */
-  setGameEndCallback(callback) {
-    this.onGameEnd = callback;
+  setResultCallback(callback) {
+    this.onResult = callback;
   }
 
   /**
-   * 현재 게임 상태 반환
+   * Get current game state
    */
   getGameState() {
     return {
       isActive: this.isGameActive,
-      score: this.score,
-      level: this.level,
-      timeRemaining: this.timeLimit,
-      currentCommand: this.currentCommand
+      wins: this.wins,
+      draws: this.draws,
+      losses: this.losses,
+      currentPhase: this.currentPhase,
+      playerChoice: this.playerChoice,
+      computerChoice: this.computerChoice
     };
   }
 }
 
-// 전역으로 내보내기
+// Export to global scope
 window.GameEngine = GameEngine;

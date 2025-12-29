@@ -1,19 +1,32 @@
 /**
  * main.js
- * 포즈 인식과 게임 로직을 초기화하고 서로 연결하는 진입점
- *
- * PoseEngine, GameEngine, Stabilizer를 조합하여 애플리케이션을 구동
+ * Rock Paper Scissors Pose Game - Main Controller
+ * 
+ * Integrates ImageEngine, GameEngine, and Stabilizer
+ * Manages UI updates and game flow
  */
 
-// 전역 변수
-let poseEngine;
+// Global variables
+let imageEngine;
 let gameEngine;
 let stabilizer;
 let ctx;
 let labelContainer;
 
+// UI Elements
+let gamePhaseEl;
+let playerChoiceEl;
+let computerChoiceEl;
+let resultDisplayEl;
+let winsEl;
+let drawsEl;
+let lossesEl;
+
+// Game state
+let currentDetectedPose = null;
+
 /**
- * 애플리케이션 초기화
+ * Initialize the application
  */
 async function init() {
   const startBtn = document.getElementById("startBtn");
@@ -22,41 +35,58 @@ async function init() {
   startBtn.disabled = true;
 
   try {
-    // 1. PoseEngine 초기화
-    poseEngine = new PoseEngine("./my_model/");
-    const { maxPredictions, webcam } = await poseEngine.init({
+    // Get UI elements
+    gamePhaseEl = document.getElementById("game-phase");
+    playerChoiceEl = document.getElementById("player-choice");
+    computerChoiceEl = document.getElementById("computer-choice");
+    resultDisplayEl = document.getElementById("result-display");
+    winsEl = document.getElementById("wins");
+    drawsEl = document.getElementById("draws");
+    lossesEl = document.getElementById("losses");
+
+    // 1. Initialize ImageEngine
+    imageEngine = new ImageEngine("./RPS_tensorflow.js/");
+    const { maxPredictions, webcam } = await imageEngine.init({
       size: 200,
       flip: true
     });
 
-    // 2. Stabilizer 초기화
+    // 2. Initialize Stabilizer
     stabilizer = new PredictionStabilizer({
       threshold: 0.7,
       smoothingFrames: 3
     });
 
-    // 3. GameEngine 초기화 (선택적)
+    // 3. Initialize GameEngine
     gameEngine = new GameEngine();
 
-    // 4. 캔버스 설정
+    // Set up game callbacks
+    gameEngine.setPhaseChangeCallback(handlePhaseChange);
+    gameEngine.setScoreChangeCallback(handleScoreChange);
+    gameEngine.setResultCallback(handleResult);
+
+    // 4. Set up canvas
     const canvas = document.getElementById("canvas");
     canvas.width = 200;
     canvas.height = 200;
     ctx = canvas.getContext("2d");
 
-    // 5. Label Container 설정
+    // 5. Set up label container (for debugging)
     labelContainer = document.getElementById("label-container");
-    labelContainer.innerHTML = ""; // 초기화
+    labelContainer.innerHTML = "";
     for (let i = 0; i < maxPredictions; i++) {
       labelContainer.appendChild(document.createElement("div"));
     }
 
-    // 6. PoseEngine 콜백 설정
-    poseEngine.setPredictionCallback(handlePrediction);
-    poseEngine.setDrawCallback(drawPose);
+    // 6. Set ImageEngine callbacks
+    imageEngine.setPredictionCallback(handlePrediction);
+    imageEngine.setDrawCallback(drawWebcam);
 
-    // 7. PoseEngine 시작
-    poseEngine.start();
+    // 7. Start ImageEngine
+    imageEngine.start();
+
+    // 8. Start Game
+    gameEngine.start();
 
     stopBtn.disabled = false;
   } catch (error) {
@@ -67,17 +97,17 @@ async function init() {
 }
 
 /**
- * 애플리케이션 중지
+ * Stop the application
  */
 function stop() {
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
 
-  if (poseEngine) {
-    poseEngine.stop();
+  if (imageEngine) {
+    imageEngine.stop();
   }
 
-  if (gameEngine && gameEngine.isGameActive) {
+  if (gameEngine) {
     gameEngine.stop();
   }
 
@@ -85,74 +115,116 @@ function stop() {
     stabilizer.reset();
   }
 
+  // Clear UI
+  gamePhaseEl.innerHTML = "";
+  playerChoiceEl.innerHTML = "";
+  computerChoiceEl.innerHTML = "?";
+  resultDisplayEl.innerHTML = "";
+  resultDisplayEl.className = "";
+
   startBtn.disabled = false;
   stopBtn.disabled = true;
 }
 
 /**
- * 예측 결과 처리 콜백
- * @param {Array} predictions - TM 모델의 예측 결과
- * @param {Object} pose - PoseNet 포즈 데이터
+ * Handle prediction from ImageEngine
  */
-function handlePrediction(predictions, pose) {
-  // 1. Stabilizer로 예측 안정화
+function handlePrediction(predictions) {
+  // 1. Stabilize predictions
   const stabilized = stabilizer.stabilize(predictions);
 
-  // 2. Label Container 업데이트
+  // 2. Update label container (debug)
   for (let i = 0; i < predictions.length; i++) {
     const classPrediction =
       predictions[i].className + ": " + predictions[i].probability.toFixed(2);
     labelContainer.childNodes[i].innerHTML = classPrediction;
   }
 
-  // 3. 최고 확률 예측 표시
+  // 3. Update max prediction display
   const maxPredictionDiv = document.getElementById("max-prediction");
-  maxPredictionDiv.innerHTML = stabilized.className || "감지 중...";
+  if (stabilized.className) {
+    maxPredictionDiv.innerHTML = stabilized.className;
+    currentDetectedPose = stabilized.className;
+  } else {
+    maxPredictionDiv.innerHTML = "감지 중...";
+    currentDetectedPose = null;
+  }
 
-  // 4. GameEngine에 포즈 전달 (게임 모드일 경우)
-  if (gameEngine && gameEngine.isGameActive && stabilized.className) {
-    gameEngine.onPoseDetected(stabilized.className);
+  // 4. Capture player choice during DRAW phase
+  if (gameEngine && gameEngine.currentPhase === 'draw' && currentDetectedPose) {
+    // Capture the webcam image
+    const canvas = document.getElementById("canvas");
+    const imageData = canvas.toDataURL('image/png');
+    gameEngine.setPlayerChoice(currentDetectedPose, imageData);
   }
 }
 
 /**
- * 포즈 그리기 콜백
- * @param {Object} pose - PoseNet 포즈 데이터
+ * Draw webcam on canvas
  */
-function drawPose(pose) {
-  if (poseEngine.webcam && poseEngine.webcam.canvas) {
-    ctx.drawImage(poseEngine.webcam.canvas, 0, 0);
-
-    // 키포인트와 스켈레톤 그리기
-    if (pose) {
-      const minPartConfidence = 0.5;
-      tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-      tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-    }
+function drawWebcam() {
+  if (imageEngine.webcam && imageEngine.webcam.canvas) {
+    ctx.drawImage(imageEngine.webcam.canvas, 0, 0);
   }
 }
 
-// 게임 모드 시작 함수 (선택적 - 향후 확장용)
-function startGameMode(config) {
-  if (!gameEngine) {
-    console.warn("GameEngine이 초기화되지 않았습니다.");
-    return;
+/**
+ * Handle game phase changes
+ */
+function handlePhaseChange(phase, message) {
+  gamePhaseEl.innerHTML = message;
+
+  // Clear previous displays when starting new round
+  if (phase === 'instruction') {
+    playerChoiceEl.innerHTML = "";
+    computerChoiceEl.innerHTML = "?";
+    resultDisplayEl.innerHTML = "";
+    resultDisplayEl.className = "";
+  }
+}
+
+/**
+ * Handle score changes
+ */
+function handleScoreChange(wins, draws, losses) {
+  winsEl.textContent = wins;
+  drawsEl.textContent = draws;
+  lossesEl.textContent = losses;
+}
+
+/**
+ * Handle game result
+ */
+function handleResult(result, playerChoice, computerChoice) {
+  // Show player choice
+  const playerEmoji = gameEngine.getEmoji(playerChoice || '❓');
+  playerChoiceEl.innerHTML = playerEmoji;
+
+  // Show computer choice
+  const computerEmoji = gameEngine.getEmoji(computerChoice);
+  computerChoiceEl.innerHTML = computerEmoji;
+
+  // Show result message
+  let resultMessage = "";
+  let resultClass = "";
+
+  if (!playerChoice) {
+    resultMessage = "포즈를 감지하지 못했습니다!";
+    resultClass = "draw";
+  } else if (result === 'win') {
+    resultMessage = "🎉 승리! 🎉";
+    resultClass = "win";
+  } else if (result === 'lose') {
+    resultMessage = "😢 패배... 😢";
+    resultClass = "lose";
+  } else {
+    resultMessage = "무승부";
+    resultClass = "draw";
   }
 
-  gameEngine.setCommandChangeCallback((command) => {
-    console.log("새로운 명령:", command);
-    // UI 업데이트 로직 추가 가능
-  });
+  resultDisplayEl.innerHTML = resultMessage;
+  resultDisplayEl.className = resultClass;
 
-  gameEngine.setScoreChangeCallback((score, level) => {
-    console.log(`점수: ${score}, 레벨: ${level}`);
-    // UI 업데이트 로직 추가 가능
-  });
-
-  gameEngine.setGameEndCallback((finalScore, finalLevel) => {
-    console.log(`게임 종료! 최종 점수: ${finalScore}, 최종 레벨: ${finalLevel}`);
-    alert(`게임 종료!\n최종 점수: ${finalScore}\n최종 레벨: ${finalLevel}`);
-  });
-
-  gameEngine.start(config);
+  // Clear game phase message
+  gamePhaseEl.innerHTML = "";
 }
