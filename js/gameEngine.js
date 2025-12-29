@@ -106,7 +106,7 @@ class GameEngine {
       let message = '';
 
       if (phase === 'instruction') {
-        message = '가위, 바위, 보 중 하나를 골라<br>"DRAW!!" 에 내세요!';
+        message = '가위, 바위, 보 중 하나를 골라<br>"DRAW!!" 에 내세요!<br><small style="font-size: 0.6em;">💡 얼굴이 카메라에 잡히지 않게 하세요</small>';
       } else if (phase === 'ready') {
         message = countdown ? countdown.toString() : 'GET READY..';
       } else if (phase === 'draw') {
