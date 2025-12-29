@@ -15,7 +15,35 @@
     <button type="button" id="stopBtn" onclick="stop()" disabled>게임 중지</button>
   </div>
 
-  <!-- Score Display -->
+  <!-- Game Phase Display -->
+  <div id="game-phase"></div>
+
+  <!-- Main Game Area -->
+  <div class="game-container">
+    <!-- Player Side -->
+    <div class="player-side">
+      <h2>플레이어</h2>
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+        <div id="max-prediction"></div>
+      </div>
+      <div id="player-choice" class="choice-display-small"></div>
+    </div>
+
+    <!-- VS Divider -->
+    <div class="vs-divider">VS</div>
+
+    <!-- Computer Side -->
+    <div class="computer-side">
+      <h2>컴퓨터</h2>
+      <div id="computer-choice" class="choice-display-large">?</div>
+    </div>
+  </div>
+
+  <!-- Result Display -->
+  <div id="result-display"></div>
+
+  <!-- Score Display (moved to bottom) -->
   <div id="score-board">
     <div class="score-item">
       <span class="score-label">승리</span>
@@ -30,34 +58,6 @@
       <span class="score-value" id="losses">0</span>
     </div>
   </div>
-
-  <!-- Game Phase Display -->
-  <div id="game-phase"></div>
-
-  <!-- Main Game Area -->
-  <div class="game-container">
-    <!-- Player Side -->
-    <div class="player-side">
-      <h2>플레이어</h2>
-      <div class="canvas-container">
-        <canvas id="canvas"></canvas>
-        <div id="max-prediction"></div>
-      </div>
-      <div id="player-choice" class="choice-display"></div>
-    </div>
-
-    <!-- VS Divider -->
-    <div class="vs-divider">VS</div>
-
-    <!-- Computer Side -->
-    <div class="computer-side">
-      <h2>컴퓨터</h2>
-      <div id="computer-choice" class="choice-display">?</div>
-    </div>
-  </div>
-
-  <!-- Result Display -->
-  <div id="result-display"></div>
 
   <!-- Debug: Label Container (hidden by default) -->
   <div id="label-container" style="display: none;"></div>

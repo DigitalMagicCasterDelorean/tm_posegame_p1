@@ -47,7 +47,7 @@ async function init() {
     // 1. Initialize ImageEngine
     imageEngine = new ImageEngine("./RPS_tensorflow.js/");
     const { maxPredictions, webcam } = await imageEngine.init({
-      size: 200,
+      size: 300,
       flip: true
     });
 
@@ -67,8 +67,8 @@ async function init() {
 
     // 4. Set up canvas
     const canvas = document.getElementById("canvas");
-    canvas.width = 200;
-    canvas.height = 200;
+    canvas.width = 300;
+    canvas.height = 300;
     ctx = canvas.getContext("2d");
 
     // 5. Set up label container (for debugging)
