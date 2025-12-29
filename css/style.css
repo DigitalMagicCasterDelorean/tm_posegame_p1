@@ -241,30 +241,52 @@ button:disabled {
   }
 }
 
-/* Result Display */
+/* Result Display - Popup Overlay */
 #result-display {
-  font-size: 28px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 64px;
   font-weight: bold;
-  min-height: 40px;
-  padding: 12px 25px;
-  border-radius: 10px;
   text-align: center;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+#result-display.show {
+  display: flex;
+  animation: popIn 0.3s ease-out;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 #result-display.win {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  animation: celebrate 0.5s ease-in-out;
+  color: #38ef7d;
 }
 
 #result-display.lose {
-  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-  animation: shake 0.5s ease-in-out;
+  color: #f45c43;
 }
 
 #result-display.draw {
-  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  color: #ffd89b;
 }
 
 @keyframes celebrate {

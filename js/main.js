@@ -223,7 +223,12 @@ function handleResult(result, playerChoice, computerChoice) {
   }
 
   resultDisplayEl.innerHTML = resultMessage;
-  resultDisplayEl.className = resultClass;
+  resultDisplayEl.className = resultClass + ' show';
+
+  // Hide popup after 2 seconds
+  setTimeout(() => {
+    resultDisplayEl.classList.remove('show');
+  }, 2000);
 
   // Clear game phase message
   gamePhaseEl.innerHTML = "";
