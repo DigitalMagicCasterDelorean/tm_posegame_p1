@@ -5,7 +5,9 @@ AI-powered rock-paper-scissors game using hand gesture recognition with TensorFl
 ## 🚀 Quick Start
 
 ### Option 1: Play Online (Easiest)
-Visit: **[Your GitHub Pages URL will go here]**
+Visit: **https://digitalmagiccasterdelorean.github.io/tm_posegame_p1/**
+
+> Note: You need to enable GitHub Pages first (Settings → Pages → Select "main" branch)
 
 ### Option 2: Run Locally
 
