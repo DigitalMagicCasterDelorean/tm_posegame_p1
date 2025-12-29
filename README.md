@@ -1,4 +1,4 @@
-# 🎮 Rock Paper Scissors Pose Game
+# 🎮 Rock Paper Scissors Gesture Game
 
 AI-powered rock-paper-scissors game using hand gesture recognition with TensorFlow.js
 

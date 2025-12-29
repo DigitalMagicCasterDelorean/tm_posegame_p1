@@ -209,16 +209,16 @@ function handleResult(result, playerChoice, computerChoice) {
   let resultClass = "";
 
   if (!playerChoice) {
-    resultMessage = "포즈를 감지하지 못했습니다!";
+    resultMessage = "제스처를 감지하지 못했습니다!";
     resultClass = "draw";
   } else if (result === 'win') {
-    resultMessage = "🎉 승리! 🎉";
+    resultMessage = `${playerEmoji} vs ${computerEmoji}<br>🎉 승리! 🎉`;
     resultClass = "win";
   } else if (result === 'lose') {
-    resultMessage = "😢 패배... 😢";
+    resultMessage = `${playerEmoji} vs ${computerEmoji}<br>😢 패배... 😢`;
     resultClass = "lose";
   } else {
-    resultMessage = "무승부";
+    resultMessage = `${playerEmoji} vs ${computerEmoji}<br>무승부`;
     resultClass = "draw";
   }
 
