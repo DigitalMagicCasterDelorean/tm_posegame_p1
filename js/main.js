@@ -119,8 +119,7 @@ function stop() {
   gamePhaseEl.innerHTML = "";
   playerChoiceEl.innerHTML = "";
   computerChoiceEl.innerHTML = "?";
-  resultDisplayEl.innerHTML = "";
-  resultDisplayEl.className = "";
+  resultDisplayEl.classList.remove('show', 'win', 'lose', 'draw');
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
