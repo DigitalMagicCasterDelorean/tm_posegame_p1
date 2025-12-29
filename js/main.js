@@ -221,8 +221,15 @@ function handleResult(result, playerChoice, computerChoice) {
     resultClass = "draw";
   }
 
-  resultDisplayEl.innerHTML = resultMessage;
-  resultDisplayEl.className = resultClass;
+  // Show popup overlay
+  const resultContent = resultDisplayEl.querySelector('.result-content');
+  resultContent.innerHTML = resultMessage;
+  resultDisplayEl.className = resultClass + ' show';
+
+  // Hide popup after 2 seconds
+  setTimeout(() => {
+    resultDisplayEl.classList.remove('show');
+  }, 2000);
 
   // Clear game phase message
   gamePhaseEl.innerHTML = "";
