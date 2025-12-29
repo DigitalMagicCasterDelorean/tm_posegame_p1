@@ -119,7 +119,8 @@ function stop() {
   gamePhaseEl.innerHTML = "";
   playerChoiceEl.innerHTML = "";
   computerChoiceEl.innerHTML = "?";
-  resultDisplayEl.classList.remove('show', 'win', 'lose', 'draw');
+  resultDisplayEl.innerHTML = "";
+  resultDisplayEl.className = "";
 
   startBtn.disabled = false;
   stopBtn.disabled = true;
@@ -221,15 +222,8 @@ function handleResult(result, playerChoice, computerChoice) {
     resultClass = "draw";
   }
 
-  // Show popup overlay
-  const resultContent = resultDisplayEl.querySelector('.result-content');
-  resultContent.innerHTML = resultMessage;
-  resultDisplayEl.className = resultClass + ' show';
-
-  // Hide popup after 2 seconds
-  setTimeout(() => {
-    resultDisplayEl.classList.remove('show');
-  }, 2000);
+  resultDisplayEl.innerHTML = resultMessage;
+  resultDisplayEl.className = resultClass;
 
   // Clear game phase message
   gamePhaseEl.innerHTML = "";
